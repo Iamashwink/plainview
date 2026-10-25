@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plainview Ad Blocker</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header class="header">
+    <div>
+      <h1>Plainview</h1>
+      <p id="status" class="muted">Loading…</p>
+    </div>
+    <label class="switch" title="Turn protection on or off everywhere">
+      <input type="checkbox" id="globalToggle" role="switch" aria-label="Protection on or off" disabled>
+      <span class="slider"></span>
+    </label>
+  </header>
+
+  <section class="card" aria-labelledby="siteHeading">
+    <h2 id="siteHeading">This site</h2>
+    <p id="hostname" class="hostname">—</p>
+    <div class="row">
+      <span id="allowLabel">Allow ads on this site</span>
+      <label class="switch small">
+        <input type="checkbox" id="siteToggle" role="switch" aria-labelledby="allowLabel" disabled>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <p id="siteNote" class="muted note" hidden></p>
+  </section>
+
+  <section class="card" aria-labelledby="statsHeading">
+    <h2 id="statsHeading">Statistics</h2>
+    <div class="stats">
+      <div class="stat">
+        <span class="num" id="blockedTotal">—</span>
+        <span class="label">Requests blocked</span>
+        <span class="sub" id="blockedPage"></span>
+      </div>
+      <div class="stat">
+        <span class="num" id="hiddenTotal">—</span>
+        <span class="label">Elements hidden</span>
+        <span class="sub" id="hiddenPage"></span>
+      </div>
+    </div>
+    <p id="statsNote" class="muted note" hidden></p>
+    <div class="row">
+      <span id="since" class="muted note"></span>
+      <button type="button" id="resetBtn" class="link">Reset statistics</button>
+    </div>
+  </section>
+
+  <div id="reloadBar" class="reload" hidden>
+    <span>Reload this page to apply the change.</span>
+    <button type="button" id="reloadBtn">Reload</button>
+  </div>
+
+  <p id="error" class="error" role="alert" hidden></p>
+
+  <footer class="muted note">Everything stays in your browser. No data is collected or sent anywhere.</footer>
+
+  <script src="../src/shared.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

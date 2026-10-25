@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Plainview test page</title>
+  <style>
+    :root { color-scheme: light dark; }
+    body { font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 24px auto; padding: 0 16px; }
+    h1 { margin-bottom: 4px; }
+    h2 { margin-top: 32px; border-bottom: 1px solid #8884; padding-bottom: 4px; }
+    .fake-ad { padding: 18px; margin: 12px 0; border: 2px dashed #d33; background: #fee; color: #800; font-weight: 700; text-align: center; }
+    .normal { padding: 10px 12px; margin: 8px 0; border: 1px solid #8886; border-radius: 6px; }
+    table { border-collapse: collapse; width: 100%; margin: 10px 0; }
+    th, td { border: 1px solid #8886; padding: 6px 8px; text-align: left; }
+    .pass { color: #0a7d36; font-weight: 700; }
+    .fail { color: #c62828; font-weight: 700; }
+    .info { color: #946200; font-weight: 700; }
+    code { background: #8883; padding: 1px 4px; border-radius: 4px; }
+    button { font: inherit; padding: 6px 12px; margin-right: 8px; cursor: pointer; }
+  </style>
+</head>
+<body>
+  <h1>Plainview test page</h1>
+  <p>Open this page from the local test server (<code>node test/server.js</code>), then read the results below.
+     Cosmetic hiding and network blocking are tested separately.</p>
+
+  <h2>1. Cosmetic filtering</h2>
+
+  <!-- Static fake ads: each should be hidden while protection is on. -->
+  <div id="ad-static-banner" class="ad-banner fake-ad">SAMPLE AD BANNER (.ad-banner): should be hidden</div>
+  <ins id="ad-static-adsense" class="adsbygoogle fake-ad">SAMPLE ADSENSE SLOT (ins.adsbygoogle): should be hidden</ins>
+
+  <!-- Normal content: must always stay visible, including look-alike names. -->
+  <div id="normal-article" class="normal"><strong>Normal article.</strong> This paragraph is real content and must stay visible.</div>
+  <div id="normal-address" class="normal address">Look-alike class names: <code>address</code>, <code>loading</code>, <code>download-ad-free</code>. Must stay visible.</div>
+  <div id="normal-lookalike" class="normal loading download-ad-free">Another look-alike element. Must stay visible.</div>
+
+  <p>
+    <button id="btn-insert">Insert one ad element now</button>
+    <button id="btn-burst">Insert 25 ad elements</button>
+    <span id="dyn-note">A dynamic ad is also inserted automatically after about 1 second.</span>
+  </p>
+  <div id="dynamic-area"></div>
+
+  <table aria-label="Cosmetic results">
+    <thead><tr><th>Element</th><th>Expected with protection ON</th><th>Now</th><th>Result</th></tr></thead>
+    <tbody id="cosmetic-results"></tbody>
+  </table>
+  <p id="cosmetic-summary"></p>
+
+  <h2>2. Network blocking</h2>
+  <p>This sends a request to <code>/__adblock_test__/ad-pixel.gif</code> (matched by the extension's test rule) and to
+     <code>/control/pixel.gif</code> (never blocked). The server counts what actually arrives, so the result does not depend on
+     any hiding or on what the page can see.</p>
+  <p><button id="btn-net">Run network test</button><button id="btn-reset">Reset server counters</button></p>
+  <table aria-label="Network results">
+    <thead><tr><th>Request</th><th>Reached the server?</th><th>Browser-side outcome</th></tr></thead>
+    <tbody id="net-results"></tbody>
+  </table>
+  <p id="net-summary"></p>
+
+  <h3>Real ad domains (manual check in DevTools)</h3>
+  <p>These load scripts from real ad hosts listed in the ruleset. A failure here could mean blocked <em>or</em> offline,
+     so this page does not judge it: open DevTools &rarr; Network and look for <code>net::ERR_BLOCKED_BY_CLIENT</code>.</p>
+  <ul id="real-results"></ul>
+
+  <script>
+    'use strict';
+
+    /* ---------- Cosmetic section ---------- */
+    const rows = [
+      { id: 'ad-static-banner', label: 'Static banner (.ad-banner)', expectHidden: true },
+      { id: 'ad-static-adsense', label: 'Static slot (ins.adsbygoogle)', expectHidden: true },
+      { id: 'normal-article', label: 'Normal article', expectHidden: false },
+      { id: 'normal-address', label: 'Look-alike: .address', expectHidden: false },
+      { id: 'normal-lookalike', label: 'Look-alike: .loading .download-ad-free', expectHidden: false }
+    ];
+
+    const dynamicArea = document.getElementById('dynamic-area');
+    let dynCount = 0;
+
+    function addDynamicAd(label) {
+      dynCount += 1;
+      const el = document.createElement('div');
+      el.id = 'ad-dynamic-' + dynCount;
+      el.className = 'ad-slot fake-ad';
+      el.textContent = 'DYNAMIC AD #' + dynCount + ' (.ad-slot): should be hidden';
+      dynamicArea.appendChild(el);
+      if (label) rows.push({ id: el.id, label: label + ' #' + dynCount + ' (.ad-slot)', expectHidden: true });
+    }
+
+    function isHidden(el) {
+      return !el.isConnected || getComputedStyle(el).display === 'none';
+    }
+
+    function renderCosmetic() {
+      const tbody = document.getElementById('cosmetic-results');
+      tbody.textContent = '';
+      let hiddenAds = 0, visibleAds = 0, wronglyHidden = 0;
+      const shown = rows.length > 12 ? rows.slice(0, 12) : rows;
+      for (const row of rows) {
+        const el = document.getElementById(row.id);
+        const hidden = el ? isHidden(el) : true;
+        if (row.expectHidden) { hidden ? hiddenAds++ : visibleAds++; }
+        else if (hidden) { wronglyHidden++; }
+      }
+      for (const row of shown) {
+        const el = document.getElementById(row.id);
+        const hidden = el ? isHidden(el) : true;
+        const ok = hidden === row.expectHidden;
+        const tr = document.createElement('tr');
+        const cells = [
+          row.label,
+          row.expectHidden ? 'hidden' : 'visible',
+          hidden ? 'hidden' : 'visible'
+        ];
+        for (const text of cells) {
+          const td = document.createElement('td');
+          td.textContent = text;
+          tr.appendChild(td);
+        }
+        const verdict = document.createElement('td');
+        if (ok) {
+          verdict.textContent = 'as expected';
+          verdict.className = 'pass';
+        } else if (row.expectHidden) {
+          verdict.textContent = 'ad visible (protection off, site allowed, or extension not running)';
+          verdict.className = 'info';
+        } else {
+          verdict.textContent = 'FALSE POSITIVE: normal content was hidden';
+          verdict.className = 'fail';
+        }
+        tr.appendChild(verdict);
+        tbody.appendChild(tr);
+      }
+      if (rows.length > shown.length) {
+        const tr = document.createElement('tr');
+        const td = document.createElement('td');
+        td.colSpan = 4;
+        td.textContent = '... and ' + (rows.length - shown.length) + ' more dynamic elements (included in the totals below)';
+        tr.appendChild(td);
+        tbody.appendChild(tr);
+      }
+      document.getElementById('cosmetic-summary').textContent =
+        'Ad elements hidden: ' + hiddenAds + ', still visible: ' + visibleAds +
+        '. Normal elements wrongly hidden: ' + wronglyHidden + '.';
+    }
+
+    document.getElementById('btn-insert').addEventListener('click', () => { addDynamicAd('Dynamic (button)'); renderCosmetic(); });
+    document.getElementById('btn-burst').addEventListener('click', () => {
+      for (let i = 0; i < 25; i++) addDynamicAd('Dynamic (burst)');
+      renderCosmetic();
+    });
+    setTimeout(() => { addDynamicAd('Dynamic (auto)'); renderCosmetic(); }, 1000);
+    setInterval(renderCosmetic, 1000);
+    renderCosmetic();
+
+    /* ---------- Network section ---------- */
+    const netBody = document.getElementById('net-results');
+    const netSummary = document.getElementById('net-summary');
+
+    function loadImage(url) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.onload = () => resolve('loaded');
+        img.onerror = () => resolve('error (blocked or failed)');
+        img.src = url;
+      });
+    }
+
+    async function serverHits() {
+      const res = await fetch('/__hits', { cache: 'no-store' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      return res.json();
+    }
+
+    function addNetRow(name, reached, outcome) {
+      const tr = document.createElement('tr');
+      [name, reached, outcome].forEach((text) => {
+        const td = document.createElement('td');
+        td.textContent = text;
+        tr.appendChild(td);
+      });
+      netBody.appendChild(tr);
+    }
+
+    async function runNetworkTest() {
+      netBody.textContent = '';
+      netSummary.textContent = 'Running...';
+      netSummary.className = '';
+      let before;
+      try {
+        await fetch('/__reset', { cache: 'no-store' });
+        before = await serverHits();
+      } catch (err) {
+        netSummary.textContent = 'Cannot reach the test server. Start it with "node test/server.js" and open this page from http://127.0.0.1:8765/.';
+        netSummary.className = 'fail';
+        return;
+      }
+
+      const stamp = Date.now();
+      const adImage = await loadImage('/__adblock_test__/ad-pixel.gif?img=' + stamp);
+      let adFetch;
+      try { await fetch('/__adblock_test__/ad-pixel.gif?fetch=' + stamp, { cache: 'no-store' }); adFetch = 'fetch succeeded'; }
+      catch (err) { adFetch = 'fetch failed: ' + err.message; }
+      const controlImage = await loadImage('/control/pixel.gif?img=' + stamp);
+
+      const after = await serverHits();
+      const adReached = after.ad - before.ad;
+      const controlReached = after.control - before.control;
+
+      addNetRow('Ad path as <img> (2 requests expected if unblocked: img + fetch)', adReached + ' of 2 reached the server', adImage + ' / ' + adFetch);
+      addNetRow('Control path as <img>', controlReached + ' of 1 reached the server', controlImage);
+
+      if (controlReached !== 1) {
+        netSummary.textContent = 'Inconclusive: the control request did not arrive, so something else is interfering with the test.';
+        netSummary.className = 'info';
+      } else if (adReached === 0) {
+        netSummary.textContent = 'Network blocking is working: 0 ad-path requests reached the server, while the control request did.';
+        netSummary.className = 'pass';
+      } else {
+        netSummary.textContent = 'Not blocked: ' + adReached + ' ad-path request(s) reached the server (protection off, site allowed, or extension not running).';
+        netSummary.className = 'info';
+      }
+    }
+
+    document.getElementById('btn-net').addEventListener('click', runNetworkTest);
+    document.getElementById('btn-reset').addEventListener('click', async () => {
+      try { await fetch('/__reset', { cache: 'no-store' }); netSummary.textContent = 'Server counters reset.'; netSummary.className = ''; }
+      catch (err) { netSummary.textContent = 'Cannot reach the test server.'; netSummary.className = 'fail'; }
+    });
+    window.addEventListener('load', () => setTimeout(runNetworkTest, 300));
+
+    /* ---------- Real ad domains (informational only) ---------- */
+    const realUrls = [
+      'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
+      'https://securepubads.g.doubleclick.net/tag/js/gpt.js',
+      'https://www.google-analytics.com/analytics.js',
+      'https://cdn.taboola.com/libtrc/unip/loader.js'
+    ];
+    const list = document.getElementById('real-results');
+    for (const url of realUrls) {
+      const li = document.createElement('li');
+      li.textContent = url + ' : loading...';
+      list.appendChild(li);
+      const s = document.createElement('script');
+      s.async = true;
+      s.src = url;
+      s.onload = () => { li.textContent = url + ' : loaded (not blocked)'; };
+      s.onerror = () => { li.textContent = url + ' : did not load (blocked, offline, or another blocker). Check DevTools > Network.'; };
+      document.head.appendChild(s);
+    }
+  </script>
+</body>
+</html>

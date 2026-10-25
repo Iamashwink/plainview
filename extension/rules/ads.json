@@ -1,0 +1,78 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "2mdn.net",
+        "33across.com",
+        "adform.net",
+        "adnxs.com",
+        "adsafeprotected.com",
+        "adservice.google.com",
+        "adsrvr.org",
+        "advertising.com",
+        "amazon-adsystem.com",
+        "bidswitch.net",
+        "casalemedia.com",
+        "contextweb.com",
+        "criteo.com",
+        "criteo.net",
+        "doubleclick.net",
+        "googleadservices.com",
+        "googlesyndication.com",
+        "indexww.com",
+        "lijit.com",
+        "media.net",
+        "moatads.com",
+        "openx.net",
+        "outbrain.com",
+        "pubmatic.com",
+        "rubiconproject.com",
+        "serving-sys.com",
+        "sharethrough.com",
+        "smartadserver.com",
+        "sovrn.com",
+        "taboola.com",
+        "teads.tv",
+        "yieldmo.com"
+      ],
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest", "ping", "media", "object", "other"]
+    }
+  },
+  {
+    "id": 2,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "requestDomains": [
+        "ads-twitter.com",
+        "analytics.tiktok.com",
+        "bat.bing.com",
+        "bluekai.com",
+        "crazyegg.com",
+        "ct.pinterest.com",
+        "demdex.net",
+        "google-analytics.com",
+        "hotjar.com",
+        "krxd.com",
+        "mouseflow.com",
+        "px.ads.linkedin.com",
+        "quantserve.com",
+        "rlcdn.com",
+        "scorecardresearch.com"
+      ],
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest", "ping", "other"]
+    }
+  },
+  {
+    "id": 3,
+    "priority": 1,
+    "action": { "type": "block" },
+    "condition": {
+      "urlFilter": "/__adblock_test__/",
+      "resourceTypes": ["script", "image", "sub_frame", "xmlhttprequest", "ping", "media", "other"]
+    }
+  }
+]
