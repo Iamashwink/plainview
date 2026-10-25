@@ -27,11 +27,9 @@
 
   <h2>1. Cosmetic filtering</h2>
 
-  <!-- Static fake ads: each should be hidden while protection is on. -->
   <div id="ad-static-banner" class="ad-banner fake-ad">SAMPLE AD BANNER (.ad-banner): should be hidden</div>
   <ins id="ad-static-adsense" class="adsbygoogle fake-ad">SAMPLE ADSENSE SLOT (ins.adsbygoogle): should be hidden</ins>
 
-  <!-- Normal content: must always stay visible, including look-alike names. -->
   <div id="normal-article" class="normal"><strong>Normal article.</strong> This paragraph is real content and must stay visible.</div>
   <div id="normal-address" class="normal address">Look-alike class names: <code>address</code>, <code>loading</code>, <code>download-ad-free</code>. Must stay visible.</div>
   <div id="normal-lookalike" class="normal loading download-ad-free">Another look-alike element. Must stay visible.</div>
@@ -68,7 +66,6 @@
   <script>
     'use strict';
 
-    /* ---------- Cosmetic section ---------- */
     const rows = [
       { id: 'ad-static-banner', label: 'Static banner (.ad-banner)', expectHidden: true },
       { id: 'ad-static-adsense', label: 'Static slot (ins.adsbygoogle)', expectHidden: true },
@@ -156,7 +153,6 @@
     setInterval(renderCosmetic, 1000);
     renderCosmetic();
 
-    /* ---------- Network section ---------- */
     const netBody = document.getElementById('net-results');
     const netSummary = document.getElementById('net-summary');
 
@@ -232,7 +228,6 @@
     });
     window.addEventListener('load', () => setTimeout(runNetworkTest, 300));
 
-    /* ---------- Real ad domains (informational only) ---------- */
     const realUrls = [
       'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js',
       'https://securepubads.g.doubleclick.net/tag/js/gpt.js',

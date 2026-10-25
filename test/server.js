@@ -1,16 +1,4 @@
 #!/usr/bin/env node
-/*
- * Local test server for the Plainview test page.
- *
- *   node test/server.js            -> http://localhost:8765
- *   PORT=9000 node test/server.js
- *
- * It exists to prove network blocking independently of cosmetic hiding:
- * the page requests one "ad" URL (matched by the extension's test rule) and one
- * "control" URL. If the extension blocks the ad request, it never reaches this
- * server, so the server-side counter stays at 0 while the control counter rises.
- * Only 127.0.0.1 is bound and only the routes below are served.
- */
 'use strict';
 
 const http = require('node:http');
@@ -21,7 +9,6 @@ const PORT = Number(process.env.PORT) || 8765;
 const HOST = '127.0.0.1';
 const PAGE = path.join(__dirname, 'test-page.html');
 
-// 1x1 transparent GIF.
 const GIF = Buffer.from('R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7', 'base64');
 
 const hits = { ad: 0, control: 0 };
@@ -47,7 +34,6 @@ const server = http.createServer((req, res) => {
     return send(res, 200, 'text/html; charset=utf-8', fs.readFileSync(PAGE));
   }
   if (pathname === '/csp-test') {
-    // Strict CSP: no inline styles allowed. Cosmetic hiding must still work.
     res.writeHead(200, {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'no-store',

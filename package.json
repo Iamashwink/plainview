@@ -2,7 +2,7 @@
   "name": "plainview-ad-blocker",
   "version": "1.0.0",
   "private": true,
-  "description": "Manifest V3 ad blocker for Chrome and Brave. No runtime dependencies.",
+  "description": "Manifest V3 ad blocker for Google Chrome. No runtime dependencies.",
   "scripts": {
     "validate": "node test/validate.js",
     "test:unit": "node --test test/shared.test.js test/background.test.js",

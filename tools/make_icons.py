@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""Generate the extension icons with only the Python standard library.
-
-Design: teal rounded square with a white ring and a diagonal bar ("blocked").
-Run from the repository root:  python3 tools/make_icons.py
-"""
 import math
 import os
 import struct
@@ -11,15 +6,13 @@ import zlib
 
 OUT = os.path.join(os.path.dirname(__file__), "..", "extension", "icons")
 SIZES = (16, 32, 48, 128)
-SS = 4  # supersampling factor for smooth edges
+SS = 4
 
 TEAL = (15, 118, 110)
 WHITE = (255, 255, 255)
 
 
 def coverage(x, y, size):
-    """Return (r, g, b, a) for the normalised point (x, y) in [0, 1]."""
-    # Rounded-square background.
     r = 0.22
     dx = max(abs(x - 0.5) - (0.5 - r), 0)
     dy = max(abs(y - 0.5) - (0.5 - r), 0)
@@ -31,7 +24,6 @@ def coverage(x, y, size):
     ring_outer, ring_inner = 0.33, 0.24
     in_ring = ring_inner <= dist <= ring_outer
 
-    # Diagonal bar from top-left to bottom-right, clipped to the ring's disc.
     along = ((x - cx) + (y - cy)) / math.sqrt(2)
     across = ((x - cx) - (y - cy)) / math.sqrt(2)
     in_bar = abs(across) <= 0.045 and abs(along) <= ring_outer
@@ -44,7 +36,7 @@ def coverage(x, y, size):
 def render(size):
     rows = []
     for py in range(size):
-        row = bytearray([0])  # PNG filter type 0
+        row = bytearray([0])
         for px in range(size):
             acc = [0, 0, 0, 0]
             for sy in range(SS):

@@ -1,15 +1,3 @@
-/*
- * Service worker (classic, non-module) for Plainview Ad Blocker.
- *
- * Responsibilities:
- *  - Keep the static "ads" ruleset enabled/disabled to match the global toggle.
- *  - Mirror the per-site allowlist into dynamic allowAllRequests rules.
- *  - Count blocked requests (only possible in unpacked installs, see README).
- *  - Count hidden elements reported by the content script.
- *
- * Settings and statistics live in chrome.storage.local. The worker keeps no
- * state it cannot rebuild, because MV3 service workers are stopped at will.
- */
 importScripts('shared.js');
 
 const {
@@ -24,18 +12,12 @@ const {
 const dnr = chrome.declarativeNetRequest;
 const STATS_FLUSH_DELAY_MS = 250;
 
-/* ---------------------------------------------------------------- queue -- */
-
-// All storage/rule mutations run one at a time so concurrent messages cannot
-// interleave read-modify-write sequences.
 let chain = Promise.resolve();
 function serialize(task) {
   const run = chain.then(() => task());
   chain = run.catch(() => {});
   return run;
 }
-
-/* ------------------------------------------------------------- settings -- */
 
 async function getSettings() {
   const stored = await chrome.storage.local.get({ enabled: true, allowlist: [] });
@@ -45,7 +27,6 @@ async function getSettings() {
   };
 }
 
-/** Makes the browser's rules match the stored settings. Idempotent. */
 async function applyState() {
   const { enabled, allowlist } = await getSettings();
 
@@ -97,10 +78,6 @@ async function ensureDefaults() {
   if (Object.keys(patch).length) await chrome.storage.local.set(patch);
 }
 
-/* ---------------------------------------------------------------- stats -- */
-
-// Increments are batched in memory and written shortly after, so a page that
-// triggers hundreds of blocked requests does not cause hundreds of writes.
 let pending = { blocked: 0, hidden: 0, tabs: new Map() };
 let flushTimer = null;
 
@@ -161,19 +138,14 @@ async function resetTabBlocked(tabId) {
   }
 }
 
-// onRuleMatchedDebug only exists for unpacked extensions that hold the
-// declarativeNetRequestFeedback permission. When it is missing we report that
-// request counting is unavailable instead of showing made-up numbers.
 const statsSupported = Boolean(dnr.onRuleMatchedDebug);
 if (statsSupported) {
   dnr.onRuleMatchedDebug.addListener((info) => {
-    // Only count the static block ruleset (not dynamic allowlist matches).
     if (info.rule.rulesetId !== RULESET_ID) return;
     addBlocked(info.request.tabId);
   });
 }
 
-// A new main-frame load starts a fresh "this page" counter.
 chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
   if (changeInfo.status === 'loading') {
     serialize(() => resetTabBlocked(tabId)).catch(() => {});
@@ -182,8 +154,6 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   serialize(() => resetTabBlocked(tabId)).catch(() => {});
 });
-
-/* -------------------------------------------------------------- messages -- */
 
 async function getState(tabId, rawHost) {
   await serialize(flushStats);
@@ -228,7 +198,6 @@ async function handleMessage(message) {
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (sender.id !== chrome.runtime.id) return false;
 
-  // From the content script: number of elements it just hid on its page.
   if (message && message.type === 'hidden') {
     const n = message.delta;
     if (Number.isInteger(n) && n > 0 && n <= 10000) addHidden(n);
@@ -242,13 +211,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     (result) => sendResponse(result),
     (err) => sendResponse({ error: String((err && err.message) || err) })
   );
-  return true; // keep the channel open for the async response
+  return true;
 });
 
-/* ------------------------------------------------------------- lifecycle -- */
-
-// Show the browser's own per-tab blocked-request count on the toolbar icon.
-// This works in packed installs too, since the browser does the counting.
 function setBadgeOptions() {
   dnr.setExtensionActionOptions({ displayActionCountAsBadgeText: true }).catch(() => {});
 }

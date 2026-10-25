@@ -1,12 +1,4 @@
 #!/usr/bin/env node
-/*
- * Static validation. No dependencies, no browser.
- *
- *   node test/validate.js
- *
- * Checks the manifest, the declarativeNetRequest ruleset, the cosmetic selector
- * list, JS syntax, and a few privacy/safety constraints on the source.
- */
 'use strict';
 
 const fs = require('node:fs');
@@ -33,7 +25,6 @@ function section(title) {
   console.log(`\n${title}`);
 }
 
-/* ------------------------------------------------------------ manifest -- */
 section('manifest.json');
 const manifest = readJson('manifest.json');
 
@@ -78,7 +69,6 @@ check('content script limited to http(s)', JSON.stringify(cs.matches) === JSON.s
 check('shared.js loads before content.js', (cs.js || []).join(',') === 'src/shared.js,src/content.js');
 check('one rule resource with id "ads"', resources.length === 1 && resources[0].id === 'ads' && resources[0].enabled === true);
 
-/* --------------------------------------------------------------- rules -- */
 section('rules/ads.json');
 const VALID_ACTIONS = new Set(['block', 'allow', 'allowAllRequests', 'redirect', 'upgradeScheme', 'modifyHeaders']);
 const VALID_TYPES = new Set([
@@ -90,7 +80,6 @@ const CONDITION_KEYS = new Set([
   'requestDomains', 'excludedRequestDomains', 'domains', 'excludedDomains', 'resourceTypes',
   'excludedResourceTypes', 'requestMethods', 'excludedRequestMethods', 'domainType', 'tabIds', 'excludedTabIds'
 ]);
-// Domains whose whole registrable domain must never be blocked wholesale.
 const PROTECTED = [
   'google.com', 'googleapis.com', 'gstatic.com', 'googleusercontent.com', 'youtube.com', 'ytimg.com',
   'cloudflare.com', 'cloudflare.net', 'cloudfront.net', 'akamaihd.net', 'akamaized.net', 'akamai.net',
@@ -125,7 +114,6 @@ check('no protected CDN / major-site domain is blocked wholesale', tooBroad.leng
 check('urlFilter rules use a specific pattern (>= 8 chars, not just a wildcard)', rules.filter((r) => r.condition.urlFilter).every((r) => r.condition.urlFilter.replace(/[*|^]/g, '').length >= 8));
 check('ruleset is small and reviewable (< 200 domains, < 20 rules)', allDomains.length < 200 && rules.length < 20, `${allDomains.length} domains, ${rules.length} rules`);
 
-/* ----------------------------------------------------------- selectors -- */
 section('cosmetic selectors (shared.js)');
 const shared = require(path.join(EXT, 'src', 'shared.js'));
 const sels = shared.COSMETIC_SELECTORS;
@@ -137,7 +125,6 @@ check('no broad substring class/id matches like [class*="ad"]', sels.every((s) =
 check('brackets and quotes are balanced', sels.every((s) => (s.match(/\[/g) || []).length === (s.match(/\]/g) || []).length && (s.match(/"/g) || []).length % 2 === 0));
 check('no :has() (performance)', sels.every((s) => !s.includes(':has(')));
 
-/* ------------------------------------------------------------- sources -- */
 section('JavaScript sources');
 const jsFiles = ['src/shared.js', 'src/background.js', 'src/content.js', 'popup/popup.js'];
 for (const rel of jsFiles) {

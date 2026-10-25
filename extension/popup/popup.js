@@ -1,7 +1,3 @@
-/*
- * Popup controller. The service worker owns all state; the popup only reads it
- * and asks for changes via runtime messages.
- */
 (() => {
   'use strict';
 
@@ -10,10 +6,10 @@
   const fmt = (n) => Number(n).toLocaleString();
 
   let tab = null;
-  let siteKey = null; // normalised hostname, or null when not an http(s) page
-  let siteDisplay = null; // hostname as shown in the address bar
+  let siteKey = null;
+  let siteDisplay = null;
   let state = null;
-  let pageHidden = null; // from the content script; null when unavailable
+  let pageHidden = null;
 
   async function send(message) {
     const response = await chrome.runtime.sendMessage(message);
@@ -45,7 +41,6 @@
       const reply = await chrome.tabs.sendMessage(tab.id, { type: 'getPageStats' });
       if (reply && Number.isInteger(reply.hidden)) pageHidden = reply.hidden;
     } catch (_) {
-      // No content script on this tab (e.g. opened before install): stays null.
     }
   }
 
@@ -152,7 +147,6 @@
       $('status').textContent = 'Could not load';
       showError(err);
     }
-    // Keep numbers live while the popup is open.
     setInterval(() => refresh().catch(() => {}), 1500);
   }
 

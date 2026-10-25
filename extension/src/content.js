@@ -1,15 +1,3 @@
-/*
- * Cosmetic filtering content script.
- *
- * - Injects one stylesheet that hides well-known ad containers.
- * - Counts the elements it hides (initial scan once, then only newly added
- *   nodes, batched) and reports the count to the service worker.
- * - Reacts live to the global toggle and the per-site allowlist, so turning
- *   protection off restores the page without a reload.
- *
- * It reads nothing from the page except element matches against the selector
- * list, and it sends nothing anywhere except a number to its own extension.
- */
 (() => {
   'use strict';
 
@@ -21,7 +9,6 @@
   const SCAN_DELAY_MS = 150;
   const MAX_PENDING_NODES = 400;
 
-  // One invalid selector would invalidate the whole rule, so check each first.
   function isValidSelector(selector) {
     try {
       document.createDocumentFragment().querySelector(selector);
@@ -48,12 +35,9 @@
   const shouldBeActive = () =>
     settings.enabled !== false && !isHostAllowed(location.hostname, settings.allowlist);
 
-  /* ------------------------------------------------------------- style -- */
-
   function injectStyle() {
     const css = `${selectorText}{display:none!important}`;
     try {
-      // A constructed stylesheet is not subject to the page's style-src CSP.
       sheet = new CSSStyleSheet();
       sheet.replaceSync(css);
       document.adoptedStyleSheets = [...document.adoptedStyleSheets, sheet];
@@ -76,8 +60,6 @@
       styleEl = null;
     }
   }
-
-  /* ---------------------------------------------------------- counting -- */
 
   function countInSubtree(element) {
     let n = 0;
@@ -113,7 +95,6 @@
         chrome.runtime.sendMessage({ type: 'hidden', delta: n }).catch(() => {});
       }
     } catch (_) {
-      // Extension was reloaded or updated; this orphaned script just stops.
     }
   }
 
@@ -137,8 +118,6 @@
   function schedule() {
     if (timer === null) timer = setTimeout(flushPending, SCAN_DELAY_MS);
   }
-
-  /* ------------------------------------------------------- activation -- */
 
   function activate() {
     if (active) return;
@@ -183,8 +162,6 @@
     else deactivate();
   }
 
-  /* --------------------------------------------------------- plumbing -- */
-
   chrome.storage.local
     .get({ enabled: true, allowlist: [] })
     .then((stored) => {
@@ -200,7 +177,6 @@
     if (changes.enabled || changes.allowlist) sync();
   });
 
-  // The popup asks for per-page numbers; answered synchronously.
   chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     if (message && message.type === 'getPageStats') {
       sendResponse({ hidden: hiddenOnPage, active });

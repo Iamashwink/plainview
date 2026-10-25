@@ -1,50 +1,22 @@
 # Plainview Ad Blocker
 
-A small, transparent ad blocker for **Google Chrome** and **Brave** (macOS), built on **Manifest V3**.
+This is a project done for network security (23XC51) and done by Ashish M K S -24PC03, Ashwin K - 24PC04.
+
+A small, transparent ad blocker for **Google Chrome**, built on **Manifest V3**.
 One codebase, no build step, no dependencies, no backend, no accounts, and no data collection.
 
 - **Network blocking** with `declarativeNetRequest`: a short, reviewable list of ad and tracker domains.
 - **Cosmetic filtering** with a content script: hides well-known ad containers, including ones inserted later.
 - **Popup dashboard**: global ON/OFF, current hostname, per-site allowlist, blocked and hidden counters, reset.
 
-## Project layout
-
-```
-extension/            <- the folder you load into the browser
-  manifest.json
-  rules/ads.json      static blocking rules (declarativeNetRequest)
-  src/shared.js       host handling, cosmetic selector list (used everywhere)
-  src/background.js   service worker: toggles rules, allowlist, statistics
-  src/content.js      cosmetic filtering
-  popup/              popup.html / popup.css / popup.js
-  icons/
-test/
-  test-page.html      sample banner, dynamic ads, normal content, network check
-  server.js           local server that records which requests actually arrive
-  validate.js         manifest / rules / selector / source validation
-  shared.test.js      unit tests
-  background.test.js  service-worker tests against a mocked chrome.* API
-  e2e.js              real-Chromium end-to-end test (optional, needs Playwright)
-tools/make_icons.py   regenerates the icons (standard library only)
-```
-
 ## Install (unpacked)
 
-You need Chrome or Brave 110 or newer. Brave follows Chromium, so the same folder works in both.
-
-### Google Chrome
+You need Google Chrome 110 or newer.
 
 1. Open `chrome://extensions`.
 2. Turn on **Developer mode** (top right).
 3. Click **Load unpacked** and choose the `extension` folder (the one containing `manifest.json`).
 4. Click the puzzle-piece icon in the toolbar and pin **Plainview Ad Blocker**.
-
-### Brave
-
-1. Open `brave://extensions`.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and choose the `extension` folder.
-4. Pin it from the puzzle-piece icon in the toolbar.
 
 After editing any file, click the reload icon on the extension's card. Content scripts only apply to pages loaded after that, so reload open tabs too.
 
@@ -82,9 +54,9 @@ npm i -D playwright && npx playwright install chromium   # once
 node test/e2e.js
 ```
 
-It loads the unpacked extension in Chromium and checks real network blocking, cosmetic hiding, the popup, the allowlist, live toggling, statistics, and behaviour on a page with a strict CSP. It prints `SKIPPED` and exits with code 2 if Playwright or Chromium is missing. It runs Chromium, not Chrome or Brave on macOS, so also do the manual test below.
+It loads the unpacked extension in Chromium and checks real network blocking, cosmetic hiding, the popup, the allowlist, live toggling, statistics, and behaviour on a page with a strict CSP. It prints `SKIPPED` and exits with code 2 if Playwright or Chromium is missing. It runs Chromium, not Google Chrome, so also do the manual test below.
 
-### 3. Manual test in Chrome or Brave
+### 3. Manual test in Chrome
 
 ```sh
 node test/server.js
@@ -105,7 +77,7 @@ Try these in order: protection on, protection off (banner reappears immediately,
 
 ### 4. Verify blocking with DevTools
 
-**Network tab.** Open DevTools (`Cmd+Option+I`), go to **Network**, tick **Disable cache**, reload the test page.
+**Network tab.** Open DevTools (`F12` or `Ctrl+Shift+I` / `Cmd+Option+I`), go to **Network**, tick **Disable cache**, reload the test page.
 
 - Requests to `/__adblock_test__/ad-pixel.gif` show status `(failed)` with `net::ERR_BLOCKED_BY_CLIENT`. That error means a client-side blocker, here the extension, stopped the request before it left the browser.
 - The "Real ad domains" list on the page (googlesyndication, doubleclick, google-analytics, taboola) should show the same error. A failure there alone is not proof (it could be offline), so confirm the error in DevTools.
@@ -114,22 +86,18 @@ Try these in order: protection on, protection off (banner reappears immediately,
 
 **Elements tab.** Select the `.ad-banner` element. Under **Computed**, `display` is `none` while protection is on and `block` when it is off.
 
-**Service worker console.** On `chrome://extensions` (or `brave://extensions`), click **service worker** on the extension card, then run:
+**Service worker console.** On `chrome://extensions`, click **service worker** on the extension card, then run:
 
 ```js
-await chrome.declarativeNetRequest.getEnabledRulesets()          // ["ads"] when protection is on
-await chrome.declarativeNetRequest.getDynamicRules()             // allowlist rules
-await chrome.storage.local.get(null)                             // enabled, allowlist, stats
-await chrome.declarativeNetRequest.testMatchOutcome({            // unpacked installs only
+await chrome.declarativeNetRequest.getEnabledRulesets()
+await chrome.declarativeNetRequest.getDynamicRules()
+await chrome.storage.local.get(null)
+await chrome.declarativeNetRequest.testMatchOutcome({
   url: 'https://securepubads.g.doubleclick.net/tag/js/gpt.js',
   type: 'script',
   initiator: 'https://example.com'
-})                                                               // matchedRules has an entry if blocked
+})
 ```
-
-### Brave notes
-
-Brave Shields has its own ad blocking. For the real-domain checks, Shields may block those requests before this extension does, so the result cannot tell the two apart. The `127.0.0.1` network test is not affected, because no Shields list matches it. To test the extension alone, set Shields to **Down** for the test site (click the lion icon).
 
 ## How it works
 
@@ -159,14 +127,4 @@ No host permissions. The content script is registered for all `http(s)` pages, s
 - **Cosmetic filtering covers the top frame only** (`all_frames` is off). Ads inside cross-origin iframes are mostly stopped by the network rules, and the iframe element itself is hidden in the parent page when it matches a selector.
 - **A brief flash of ads is possible** on first paint, because the content script reads its settings asynchronously at `document_start`.
 - **Blocking some trackers or ad widgets can break a page.** Allowlist the site if so.
-- **Verification status:** the checks above were run in Node and in Chromium 141 on Linux. They have not been run in Google Chrome or Brave on macOS.
-
-## Development
-
-```sh
-npm test            # validation + unit tests
-node test/e2e.js    # optional real-browser test
-npm run icons       # regenerate icons
-```
-
-To add a domain, edit `extension/rules/ads.json` and run `npm test`. To add a cosmetic selector, edit `COSMETIC_SELECTORS` in `extension/src/shared.js`; keep it specific (the validator rejects bare tags and `[class*="ad"]`-style matches).
+- **Verification status:** the checks above were run in Node and in Chromium.

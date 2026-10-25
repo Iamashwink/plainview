@@ -1,18 +1,4 @@
 #!/usr/bin/env node
-/*
- * End-to-end test in a real Chromium with the unpacked extension loaded.
- *
- *   node test/e2e.js
- *
- * Requires Playwright and a Chromium build (not installed by this project):
- *   npm i -D playwright && npx playwright install chromium
- * If Playwright is global, this script finds it via `npm root -g`.
- *
- * What this proves: the real manifest, ruleset, service worker, content script
- * and popup work together in Chromium. What it does NOT prove: behaviour in
- * Google Chrome or Brave on macOS (Brave Shields and Chrome-specific policies
- * are not exercised). Run the manual steps in the README for those.
- */
 'use strict';
 
 const { spawn, execSync } = require('node:child_process');
@@ -107,7 +93,6 @@ async function main() {
       return sets.length ? sets : null;
     });
     check('static ruleset "ads" is enabled after install', Array.isArray(enabledSets) && enabledSets.includes('ads'), JSON.stringify(enabledSets));
-    // onInstalled setup runs asynchronously after the worker starts, so poll.
     const defaults = await waitFor(async () => {
       const d = await swEval(() => chrome.storage.local.get(['enabled', 'allowlist', 'stats']));
       return d.enabled !== undefined && d.stats ? d : null;
@@ -116,7 +101,6 @@ async function main() {
     const hasDebug = await swEval(() => Boolean(chrome.declarativeNetRequest.onRuleMatchedDebug));
     check('onRuleMatchedDebug is available (unpacked install)', hasDebug);
 
-    // DNR's own matcher, independent of any page: does the ruleset match these URLs?
     const outcome = (url, type) => swEval(
       ({ url, type }) => chrome.declarativeNetRequest.testMatchOutcome({ url, type, initiator: 'https://example.com' }),
       { url, type }
@@ -172,11 +156,9 @@ async function main() {
     const summaryText = await page.locator('#cosmetic-summary').textContent();
     check('page reports no false positives', /wrongly hidden: 0/.test(summaryText), summaryText);
 
-    // Statistics must be real numbers.
-    await sleep(700); // let the batched counters flush
+    await sleep(700);
     const stats = await swEval(() => chrome.storage.local.get('stats'));
     check('blocked count recorded (img + fetch ad requests + real ad scripts)', stats.stats.blocked >= 2, JSON.stringify(stats.stats));
-    // 2 static + 1 auto + 25 burst = 28 elements.
     await waitFor(async () => (await swEval(() => chrome.storage.local.get('stats'))).stats.hidden >= 28, { timeout: 4000 });
     const stats2 = (await swEval(() => chrome.storage.local.get('stats'))).stats;
     check('hidden count equals elements actually hidden (28)', stats2.hidden === 28, JSON.stringify(stats2));

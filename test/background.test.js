@@ -1,11 +1,5 @@
 'use strict';
 
-/*
- * Runs the real src/background.js inside a vm sandbox with a mocked chrome.*
- * API. This verifies the worker's logic (toggle, allowlist rules, stats,
- * message handling). It is NOT a browser test: see test/e2e.js for that.
- */
-
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -99,7 +93,6 @@ function createWorker({ withDebugEvent = true } = {}) {
   const context = vm.createContext(sandbox);
   vm.runInContext(fs.readFileSync(path.join(SRC, 'background.js'), 'utf8'), context, { filename: 'background.js' });
 
-  // Simulates chrome.runtime.sendMessage as seen by the worker.
   function send(message, sender = { id: chromeMock.runtime.id }) {
     return new Promise((resolve) => {
       const keepOpen = listeners.message(message, sender, resolve);
@@ -109,7 +102,7 @@ function createWorker({ withDebugEvent = true } = {}) {
 
   async function install() {
     listeners.installed({ reason: 'install' });
-    await send({ type: 'getState' }); // queued behind the install work
+    await send({ type: 'getState' });
   }
 
   return { chrome: chromeMock, dnrState, listeners, send, install, local, session };
@@ -149,7 +142,7 @@ test('startup re-applies persisted "off" state to the browser rules', async () =
   const w = createWorker();
   await w.install();
   await w.local.set({ enabled: false });
-  w.dnrState.enabled.add('ads'); // browser reverted to the manifest default
+  w.dnrState.enabled.add('ads');
   w.listeners.startup();
   await w.send({ type: 'getState' });
   assert.equal(w.dnrState.enabled.has('ads'), false);
@@ -205,8 +198,8 @@ test('blocked-request counting: totals, per-tab, ignores non-ads rulesets', asyn
   w.listeners.matched(matchEvent(5));
   w.listeners.matched(matchEvent(5));
   w.listeners.matched(matchEvent(9));
-  w.listeners.matched(matchEvent(5, '_dynamic')); // allowlist rule match: not a block
-  w.listeners.matched(matchEvent(-1)); // not tied to a tab: total only
+  w.listeners.matched(matchEvent(5, '_dynamic'));
+  w.listeners.matched(matchEvent(-1));
 
   const state = await w.send({ type: 'getState', tabId: 5, host: 'example.com' });
   assert.equal(state.statsSupported, true);
@@ -214,7 +207,6 @@ test('blocked-request counting: totals, per-tab, ignores non-ads rulesets', asyn
   assert.equal(state.pageBlocked, 2);
   assert.equal((await w.send({ type: 'getState', tabId: 9 })).pageBlocked, 1);
 
-  // Persisted in storage.local so it survives a worker restart.
   assert.equal(w.local.store.stats.blocked, 4);
 });
 
