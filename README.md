@@ -1,6 +1,6 @@
 # Plainview Ad Blocker
 
-This is a project done for network security (23XC51) and done by Ashish M K S -24PC03, Ashwin K - 24PC04.
+This is a project done for network security (23XC51) and done by Ashish M K S - 24PC03, Ashwin K - 24PC04.
 
 A small, transparent ad blocker for **Google Chrome**, built on **Manifest V3**.
 One codebase, no build step, no dependencies, no backend, no accounts, and no data collection.
